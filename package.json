@@ -1,0 +1,42 @@
+{
+  "name": "dsh-entry-transition",
+  "version": "1.0.0",
+  "description": "One-shot entrance animation for the DSH workspace: logo is written onto the canvas, an inverted color bar sweeps across on exit; mirrors light/dark themes automatically.",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "INSTALL.md",
+    "install.mjs"
+  ],
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "immediately": true
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2"
+  },
+  "license": "MIT",
+  "meta": {
+    "title": "Entry Transition",
+    "description": "打开工作台时的一次性入场动画：标识在画布上逐字擦出，退场时反色色块自左缘扫过整屏，内容压暗让位。深浅主题自动镜像，只动合成层，顺滑不掉帧。装上即用，零配置。"
+  },
+  "keywords": [
+    "dsh-bundle",
+    "skin",
+    "transition",
+    "theme"
+  ]
+}
