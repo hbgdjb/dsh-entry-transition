@@ -1,0 +1,567 @@
+/*
+ * Skin transition layer — the screen played once while the shell activates.
+ *
+ * Sequence:
+ *   1. **Write** the wordmark `DEEPSEEK HARNESS` with a pen: the monoline skeleton
+ *      in `lib/index.js` is drawn stroke by stroke (1500ms·k).
+ *   2. **Sliver** — the block shows up as a 2px strip on the left edge (220ms·k),
+ *      only after the name is complete.
+ *   3. **Sweep** — that strip becomes the full-height block and crosses the
+ *      viewport (900ms·k). What sweeps out is the block itself, not a line.
+ *   4. **Flood** — the remainder is covered (320ms·k), then the layer fades
+ *      away (460ms·k).
+ *
+ * Palette follows the active shell theme (`html[data-ds-dark-theme]`), and there
+ * is no separate accent colour. The canvas is always the block's opposite, so a
+ * block always reads as a wipe:
+ *   dark  theme → light canvas #f4f5f6, black ink #0c0e10, BLACK block #000000
+ *   light theme → dark canvas  #0b0d0f, white ink #ffffff, WHITE block #ffffff
+ * The block (sliver, sweep and flood) is `--hsx-block`.
+ *
+ * The phase clock lives in `--hsx-k` (one time unit), so `?hsx=slow` is a
+ * single multiplier and the teardown timer mirrors it exactly.
+ */
+
+.hsx-boot {
+  /* One multiplier drives every phase: `?hsx=slow` sets it to 3, reduced motion
+     to 0.45. The values below are the BASE durations; nothing may hardcode a
+     duration outside them, or slow/reduce silently stop working (that happened
+     once — the check script now guards it). */
+  --hsx-k: 1;
+  --hsx-line: 2px;
+  --hsx-write: calc(1100ms * var(--hsx-k));
+  /* How far the pen advances for one glyph. The stagger packs every pen stroke
+     inside that window: write + char, divided across the glyphs. */
+  --hsx-char: calc(340ms * var(--hsx-k));
+  /* One sliding block, crossing its stroke's width. */
+  --hsx-stroke-ms: calc(200ms * var(--hsx-k));
+  /* The stagger walks the row one GLYPH at a time, so every stroke in a letter shares
+     the letter's delay and the letter arrives in one motion. `--hsx-i` comes from the
+     markup, this is the divisor (characters, so the word gap counts as a cell). */
+  --hsx-cells: 16;
+  /* How long the finished name waits before the block may move. It must cover the
+     FINAL STROKE: the pen starts the last character at (write + char) * 14/16 and
+     still needs `char` to draw it, so the name is complete at ~1500ms.
+     `bootScript` computes that same moment and REFUSES to build if this token is the
+     smaller of the two — a block that started while the last letter was still being
+     drawn was a real, repeatable bug, and a build-time check is cheaper than a
+     runtime override. */
+  --hsx-hold: calc(1500ms * var(--hsx-k));
+  /* The block appears on the left edge (a sliver), then sweeps right as a block. */
+  --hsx-rail: calc(220ms * var(--hsx-k));
+  --hsx-travel: calc(900ms * var(--hsx-k));
+  --hsx-flood: calc(320ms * var(--hsx-k));
+  --hsx-fade: calc(460ms * var(--hsx-k));
+  /* When the block may start moving, counted from the moment the pen is released.
+     `bootScript` asserts this against the stroke stagger it measured, so the two
+     cannot drift apart and let the block start before the name is finished. */
+  --hsx-step: calc(var(--hsx-write) + var(--hsx-hold));
+
+  /* Each theme gets the pairing that makes its own block visible, exactly like
+     the reference screen (a dark canvas with light copy):
+       dark  theme → light canvas + black copy + BLACK block
+       light theme → dark canvas  + white copy + WHITE block
+     The canvas is the block's opposite, so the block always reads as a wipe
+     rather than blending into the field. */
+  --hsx-field: #f4f5f6;
+  --hsx-ink: #0c0e10;
+  --hsx-block: #000000;
+  --hsx-dim: rgba(12, 14, 16, 0.45);
+
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  background: var(--hsx-field);
+  color: var(--hsx-ink);
+  overflow: hidden;
+  opacity: 1;
+  contain: strict;
+  box-sizing: border-box;
+  /* NOTE: no `will-change`, and no promotion of the exit elements either.
+     This machine drives a 2560x1600 panel through a 512MB integrated GPU (plus a
+     discrete one), and a promoted element costs width*height*4 bytes of texture for
+     as long as it exists: the layer alone was ~37MB at this DPI, and the travelling
+     block and the flood block were two more of the same — ~111MB of resident textures
+     competing with the app's own layers while it boots. Measurements showed the
+     animation's main-thread cost is ~0.02ms per frame, so holding GPU memory to save
+     that is a bad trade. A solid-colour box is cheap to re-rasterize from its paint
+     stream each frame; correctness first, and the animation is already composited by
+     `contain: strict` + `overflow: hidden` cutting the invalidated area down. */
+  font-family: "Segoe UI Variable Display", "Segoe UI Variable Text",
+    "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "PingFang SC",
+    system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Light theme: dark canvas, white wordmark, WHITE exiting block. */
+.hsx-boot[data-hsx-mode='light'] {
+  --hsx-field: #0b0d0f;
+  --hsx-ink: #ffffff;
+  --hsx-block: #ffffff;
+  --hsx-dim: rgba(255, 255, 255, 0.42);
+}
+
+/* ==========================================================================
+   The wordmark: written one character at a time
+   ========================================================================== */
+
+.hsx-boot__inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(14px, 1.8vw, 26px);
+  padding: clamp(28px, 5.2vw, 84px);
+  box-sizing: border-box;
+}
+
+/* Keep the drawn word on one line and inside the frame. */
+.hsx-boot__title { max-width: 100%; }
+
+.hsx-boot__index {
+  font-size: 11px;
+  line-height: 1.6;
+  letter-spacing: 0.36em;
+  text-transform: uppercase;
+  color: var(--hsx-dim);
+  opacity: 0;
+  animation: hsx-fade 600ms ease-out 80ms forwards;
+  /* Runs immediately, before the writing phase is released: it is one tiny opacity
+     fade, and it gives the silent-boot frame a finished look. */
+}
+
+/* The wordmark is DRAWN, not revealed: a row of per-glyph SVGs whose monoline
+   skeleton paths are dashed and offset by their own measured length, so the pen
+   literally travels each stroke. No mask, no per-character fade. */
+.hsx-boot__title {
+  display: block;
+  color: var(--hsx-ink);
+}
+
+.hsx-boot__word {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* One letter cell scales with the viewport; letters and the word gap read from
+     it, so the whole line stays proportional on any width. */
+  --hsx-cell: clamp(52px, 7.2vw, 92px);
+}
+
+/* The glyph cell is the positioning context: an HTML cover cannot live inside an <svg>,
+   so each letter is wrapped in a cell that holds the static SVG plus the block. */
+.hsx-boot__cell {
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+  width: var(--hsx-cell);
+}
+
+/* The strokes are drawn once, in full. What hides them until the pen arrives is the
+   cover, and the cover is removed by a transform — never by re-rasterizing a vector. */
+.hsx-boot__glyph {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.hsx-boot__glyph path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--hsx-stroke, 3.2);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The sliding block: one per LETTER, and an HTML element on purpose.
+   `will-change: transform` promotes it to its own compositor layer, which is what keeps
+   the reveal moving while the app's boot blocks the main thread for ~170ms — a transform
+   animation on an SVG child is not composited, and that is exactly why the wordmark
+   stuttered while the (also HTML) status dot stayed smooth.
+   `scaleX(1 -> 0)` with `transform-origin: right` shrinks the cover toward its right
+   edge, so the letter is revealed left to right and the cover never leaves its own cell:
+   no clip paths, and no chance of covering a neighbouring letter. `scaleX` is a
+   compositor transform just like `translateX`, so nothing is re-rasterized per frame. */
+.hsx-boot__cover {
+  position: absolute;
+  inset: 0;
+  background: var(--hsx-field);
+  transform-origin: right center;
+  transform: scaleX(1);
+  will-change: transform;
+  animation: hsx-wipe var(--hsx-stroke-ms) cubic-bezier(0.45, 0.05, 0.35, 0.95) forwards;
+  /* The stagger walks the row one GLYPH at a time, so a letter arrives in one motion
+     instead of in staggered parts. `--hsx-i` is the glyph index (inline, from the
+     markup); `--hsx-cells` is the word length (written once on the container). Doing it
+     in CSS keeps it scaled by the clock variable for free. */
+  animation-delay: calc(
+    (var(--hsx-write) + var(--hsx-char)) * var(--hsx-i, 0) / var(--hsx-cells, 16)
+  );
+  /* Held until the shell is ready and the main thread is quiet: the whole writing
+     phase sits on a still frame while the app boots behind it. */
+  animation-play-state: paused;
+}
+
+/* Shrink to nothing, revealing the letter from its left edge. */
+@keyframes hsx-wipe {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+/* THE RELEASE. The moving parts are the covers, not the paths: a path is drawn in full
+   and is permanently visible, so releasing the paths would animate nothing and leave
+   every cover parked over its stroke — which renders the wordmark completely blank.
+   That is exactly the bug this line caused when the reveal changed from a dash to a
+   slide, and `check-markup.mjs` now asserts the release targets the covers. */
+.hsx-boot--writing .hsx-boot__cover { animation-play-state: running; }
+
+/* The word gap is a plain spacer, so the row needs no space glyph. */
+.hsx-boot__gap { display: block; flex: 0 0 auto; }
+.hsx-boot__rule {
+  display: block;
+  width: clamp(56px, 12vw, 190px);
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--hsx-ink) 0%, transparent),
+    color-mix(in srgb, var(--hsx-ink) 55%, transparent),
+    color-mix(in srgb, var(--hsx-ink) 0%, transparent)
+  );
+  opacity: 0;
+  transform: scaleX(0.2);
+  animation: hsx-rule 900ms cubic-bezier(0.2, 0.7, 0.2, 1) calc(var(--hsx-write) * 0.72) forwards;
+  /* Held with the writing phase, so the waiting frame is completely still. */
+  animation-play-state: paused;
+}
+
+.hsx-boot--writing .hsx-boot__rule { animation-play-state: running; }
+
+/* ==========================================================================
+   Status line (small, bottom-left) — fades in as the name finishes
+   ========================================================================== */
+
+.hsx-boot__status {
+  position: absolute;
+  left: clamp(28px, 5.2vw, 84px);
+  bottom: clamp(26px, 4.4vw, 62px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: var(--hsx-dim);
+  opacity: 0;
+  animation: hsx-fade 520ms ease-out calc(var(--hsx-write) * 0.8) forwards;
+  animation-play-state: paused;
+}
+
+.hsx-boot--writing .hsx-boot__status { animation-play-state: running; }
+
+.hsx-boot__pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--hsx-ink);
+  animation: hsx-pulse 1.6s ease-in-out infinite;
+}
+
+/* ==========================================================================
+   Phase 2/3: the rail, the travelling line, and the block
+   ========================================================================== */
+
+.hsx-boot__bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--hsx-line);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: color-mix(in srgb, var(--hsx-ink) 12%, transparent);
+  pointer-events: none;
+}
+
+/* Phase 1: the block arrives as this thin sliver on the left edge. It grows with
+   a TRANSFORM, not with `height`: animating height relayouts the layer every
+   frame, which is one of the two things that made the opening feel stuttery. */
+.hsx-boot__bar i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--hsx-block);
+  transform: scaleY(0);
+  transform-origin: bottom center;
+}
+
+/* ...and phase 2 *is* the block: the sliver becomes full-height and crosses the
+   field, so what sweeps out is the theme's own colour, not a line.
+ *
+ * It SLIDES rather than scales, and the buffer is exactly one viewport with the
+ * pseudo-element parked one full width to the left, so `-100% -> 0` lands the right
+ * edge exactly on the right edge of the screen. Percentages are used throughout:
+ * mixing a `%` translate into an element sized with `vw` misplaces it, and a
+ * viewport-sized `scaleX` has to be re-rasterized as it grows.
+ *
+ * Deliberately NOT promoted with `will-change`: that would pin a second
+ * viewport-sized texture (~37MB at this machine's DPI, on a 512MB integrated GPU)
+ * for the whole exit, and a solid box repaints cheaply anyway. */
+.hsx-boot__bar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100%;
+  background: var(--hsx-block);
+  transform: translateX(-100%);
+  pointer-events: none;
+}
+
+/* The final block: the exit colour, parked one full width to the right, so the
+   flood continues the same leftward-to-rightward motion past the sweep. Also not
+   promoted, for the same reason as the travelling block above. */
+.hsx-boot__sweep {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--hsx-block);
+  transform: translateX(100%);
+  pointer-events: none;
+}
+
+/* --- exit: everything runs one phase later --- */
+
+/* No `!important` on the base height: an author `!important` declaration beats a
+   CSS animation, which would silently cancel `hsx-rail` and leave the sliver
+   jumping to full height. `forwards` keeps it full once the 220ms has run. */
+.hsx-boot--leaving .hsx-boot__bar i {
+  animation: hsx-rail var(--hsx-rail) linear var(--hsx-step) forwards;
+}
+
+/* Ease-out, so the sweep leaves the left edge quickly and settles across the field
+   instead of running out of speed at the end. */
+.hsx-boot--leaving .hsx-boot__bar::after {
+  animation: hsx-travel var(--hsx-travel) cubic-bezier(0.16, 0.62, 0.3, 1)
+    calc(var(--hsx-step) + var(--hsx-rail)) forwards;
+}
+
+.hsx-boot--leaving .hsx-boot__sweep {
+  animation: hsx-flood var(--hsx-flood) ease-out
+    calc(var(--hsx-step) + var(--hsx-rail) + var(--hsx-travel)) forwards;
+}
+
+/* The copy steps aside while the line crosses the field. */
+.hsx-boot--leaving .hsx-boot__inner,
+.hsx-boot--leaving .hsx-boot__status {
+  animation: none;
+  opacity: 0;
+  transition: opacity calc(420ms * var(--hsx-k)) ease-out calc(var(--hsx-step) * 0.5);
+}
+
+/* Whole layer fades once the block has covered it. */
+.hsx-boot--leaving {
+  transition: opacity var(--hsx-fade) linear
+    calc(var(--hsx-step) + var(--hsx-rail) + var(--hsx-travel) + var(--hsx-flood));
+  opacity: 0;
+}
+
+/* ==========================================================================
+   Keyframes
+   ========================================================================== */
+
+@keyframes hsx-rule {
+  from { opacity: 0; transform: scaleX(0.2); }
+  to { opacity: 1; transform: scaleX(1); }
+}
+
+@keyframes hsx-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes hsx-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.72); }
+}
+
+/* A compositor-friendly grow: transform only, so no layout runs per frame. */
+@keyframes hsx-rail {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+/* The sweep slides its viewport-sized buffer in from one full width to the left,
+   ending exactly over the field: the block starts at the left edge and covers it. */
+@keyframes hsx-travel {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+/* The flood continues the same motion, from just past the right edge to full
+   coverage, so the two phases read as one continuous slide. */
+@keyframes hsx-flood {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* ==========================================================================
+   Review frames and reduced motion
+   ========================================================================== */
+
+/* ?hsx=slow — every phase stretched 3x. */
+.hsx-boot--slow { --hsx-k: 3; }
+
+/* Review frames park the exit at a chosen point via `--hsx-park` (the rail fill,
+   a percentage) and `--hsx-park-block` (a whole transform for the block). They
+   also stop every animation, so a headless capture shows the intended frame
+   instead of frame 0. */
+.hsx-boot--still,
+.hsx-boot--sweep,
+.hsx-boot--flood {
+  --hsx-park: 0%;
+  --hsx-park-block: translateX(100%);
+}
+.hsx-boot--still { --hsx-park: 62%; }
+.hsx-boot--sweep { --hsx-park: 100%; }
+.hsx-boot--flood { --hsx-park: 100%; --hsx-park-block: translateX(0); }
+
+/* ?hsx=taken — the sweep has already covered the field: the sliver is full and the
+   block sits across the layer. Useful to see the hand-off state on the real screen. */
+.hsx-boot--taken {
+  --hsx-park: 100%;
+  --hsx-park-block: translateX(0);
+}
+.hsx-boot--taken .hsx-boot__bar i { transform: scaleY(100%); }
+.hsx-boot--taken .hsx-boot__bar::after { transform: translateX(0); }
+.hsx-boot--taken .hsx-boot__inner,
+.hsx-boot--taken .hsx-boot__status { opacity: 0; }
+
+/* ?hsx=write — freeze the writing mid-word: the characters the cursor has
+   already reached sit settled, the rest are not written yet. The split is the
+   documented 8-of-16 point; the last written character is duplicated in the
+   animation below so its stagger resolves against a `0ms` write duration. */
+.hsx-boot--write {
+  --hsx-park: 0%;
+  --hsx-park-block: translateX(100%);
+}
+
+.hsx-boot--write .hsx-boot__index,
+.hsx-boot--write .hsx-boot__rule { opacity: 1; transform: none; }
+.hsx-boot--write .hsx-boot__status { opacity: 0; }
+
+/* ?hsx=drawing — the pen is frozen part-way through the first stroke of the
+   eleventh letter. Glyphs before it are drawn, the rest have not been started. */
+.hsx-boot--drawing {
+  --hsx-park: 0%;
+  --hsx-park-block: translateX(100%);
+}
+
+.hsx-boot--drawing .hsx-boot__index,
+.hsx-boot--drawing .hsx-boot__rule { opacity: 1; transform: none; }
+.hsx-boot--drawing .hsx-boot__status { opacity: 0; }
+/* Review frames are frozen by parking the blocks: scaleX(1) still hides its letter,
+   scaleX(0) has revealed it. */
+.hsx-boot--drawing .hsx-boot__cover { animation: none; transform: scaleX(1); }
+.hsx-boot--drawing .hsx-boot__cover[data-hsx-stroke="0"],
+.hsx-boot--drawing .hsx-boot__cover[data-hsx-stroke="1"],
+.hsx-boot--drawing .hsx-boot__cover[data-hsx-stroke="2"],
+.hsx-boot--drawing .hsx-boot__cover[data-hsx-stroke="3"],
+.hsx-boot--drawing .hsx-boot__cover[data-hsx-stroke="4"],
+.hsx-boot--drawing .hsx-boot__cover[data-hsx-stroke="5"],
+.hsx-boot--drawing .hsx-boot__cover[data-hsx-stroke="6"],
+.hsx-boot--drawing .hsx-boot__cover[data-hsx-stroke="7"],
+.hsx-boot--drawing .hsx-boot__cover[data-hsx-stroke="8"],
+.hsx-boot--drawing .hsx-boot__cover[data-hsx-stroke="9"],
+.hsx-boot--drawing .hsx-boot__cover[data-hsx-stroke="10"] {
+  transform: scaleX(0);
+}
+/* Mid-wipe: the pen is a little over half way across the twelfth letter's first stroke. */
+.hsx-boot--drawing .hsx-boot__cover[data-hsx-stroke="11"] { transform: scaleX(0.52); }
+
+/* Unwritten letters: every block still covers its letter. */
+.hsx-boot--write .hsx-boot__cover { animation: none; transform: scaleX(1); }
+
+/* Letters already written (0-7: DEEPSEEK) are snapped to their end state, so the frame
+   never depends on when the capture happens. */
+.hsx-boot--write .hsx-boot__cover[data-hsx-stroke="0"],
+.hsx-boot--write .hsx-boot__cover[data-hsx-stroke="1"],
+.hsx-boot--write .hsx-boot__cover[data-hsx-stroke="2"],
+.hsx-boot--write .hsx-boot__cover[data-hsx-stroke="3"],
+.hsx-boot--write .hsx-boot__cover[data-hsx-stroke="4"],
+.hsx-boot--write .hsx-boot__cover[data-hsx-stroke="5"],
+.hsx-boot--write .hsx-boot__cover[data-hsx-stroke="6"],
+.hsx-boot--write .hsx-boot__cover[data-hsx-stroke="7"] {
+  transform: scaleX(0);
+}
+
+.hsx-boot--write *,
+.hsx-boot--write *::before,
+.hsx-boot--write *::after { animation: none !important; }
+
+.hsx-boot--still *,
+.hsx-boot--still *::before,
+.hsx-boot--still *::after,
+.hsx-boot--sweep *,
+.hsx-boot--sweep *::before,
+.hsx-boot--sweep *::after,
+.hsx-boot--flood *,
+.hsx-boot--flood *::before,
+.hsx-boot--flood *::after { animation: none !important; }
+
+.hsx-boot--still .hsx-boot__index,
+.hsx-boot--still .hsx-boot__glyph path,
+.hsx-boot--still .hsx-boot__rule,
+.hsx-boot--still .hsx-boot__status { opacity: 1; filter: none; }
+
+/* Settled frames: every block has shrunk away, so the name is fully visible. The
+   `transform: none` on the sibling rule above must not reach the covers, which is why
+   they are listed separately here. */
+.hsx-boot--still .hsx-boot__cover,
+.hsx-boot--sweep .hsx-boot__cover,
+.hsx-boot--flood .hsx-boot__cover {
+  animation: none !important;
+  transform: scaleX(0);
+}
+
+/* Rail fill parked by the shared custom property. Frozen frames need no
+   `!important`: their animations are already disabled above. */
+.hsx-boot--still .hsx-boot__bar i,
+.hsx-boot--sweep .hsx-boot__bar i,
+.hsx-boot--flood .hsx-boot__bar i { transform: scaleY(var(--hsx-park)); }
+
+/* The travelling block: parked 46% of the way across the field. */
+.hsx-boot--sweep .hsx-boot__bar::after { transform: translateX(-54%); }
+.hsx-boot--flood .hsx-boot__bar::after { transform: translateX(0); }
+
+/* The final block. */
+.hsx-boot--flood .hsx-boot__sweep { transform: var(--hsx-park-block); }
+
+/* Copy visibility per frame: written in `still`, stepping aside in the exit. */
+.hsx-boot--sweep .hsx-boot__inner,
+.hsx-boot--sweep .hsx-boot__status { animation: none; opacity: 0.12; }
+
+.hsx-boot--flood .hsx-boot__inner,
+.hsx-boot--flood .hsx-boot__status { animation: none; opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hsx-boot { --hsx-k: 0.45; }
+  /* The name simply appears, fully drawn; the exit still runs (shortened by the
+     clock). Wiping every block away is exactly the motion being reduced. */
+  .hsx-boot__cover {
+    animation: none;
+    transform: scaleX(0);
+  }
+  .hsx-boot__index,
+  .hsx-boot__rule,
+  .hsx-boot__status { animation-duration: 200ms; }
+  .hsx-boot__pulse { animation: none; }
+}
+
+/* Small screens: the SVG scales with its box, so only the status line changes. */
+@media (max-width: 620px) {
+  .hsx-boot__title { width: 96%; }
+  .hsx-boot__status { display: none; }
+}
