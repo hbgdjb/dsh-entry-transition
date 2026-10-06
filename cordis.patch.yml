@@ -1,0 +1,14 @@
+# Harness Skin — bundle patch（分发包专用）。
+# 只有当本包作为依赖被安装（pnpm add / 插件市场）时，loader 才会按 package.json
+# 里的 dsh.bundle.patch 声明读取这份文件，把皮肤作为一层插入 profile。
+# 本地离线安装（install.mjs）走本地文件条目，不经过这里。
+- insert:
+    - id: harness-skin
+      name: dsh-entry-transition
+      config:
+        enabled: true
+        overlay: true
+        theme: true
+        minVisibleMs: 2200
+        readyTimeoutMs: 30000
+        playOncePerSession: true
