@@ -1,0 +1,319 @@
+/*
+ * Skin theme layer — industrial dark palette + condensed typography.
+ *
+ * Loaded as a host-side index injection (<style> in <head>) so it applies on the
+ * very first paint, before the shell and before any client plugin activates.
+ *
+ * Cascade contract
+ * ----------------
+ * - Every mode-dependent token is declared on the same element the shipped
+ *   design system uses — `body` for the light palette and
+ *   `body[data-ds-dark-theme]` for the dark one — with `!important`.
+ *   The theme plugin declares the same names on exactly those two selectors
+ *   (`dsh-client-ui-theme`: design-platform.css, char offset 49281 and 54571).
+ *   Equal specificity is not enough on its own: that sheet is appended during
+ *   the client phase, which lands *after* this injected sheet, so `!important`
+ *   is what keeps the skin authoritative regardless of insertion order.
+ * - Neutral inheritable values (geometry, fonts) are declared on `html` with
+ *   `!important` for the same reason (the plugin declares `--dsw-font-family`
+ *   on `:root`).
+ *   `--dsw-elevation-*` is deliberately absent: the plugin re-declares it on
+ *   `body, body *`, so an inherited value would be shadowed on every descendant.
+ *
+ * Every token name below was verified against the shipped design system
+ * (`dsh-client-ui-theme`: base.css / design-platform.css / gradient-shadow-text.css).
+ */
+
+/* ==========================================================================
+   Mode-independent: geometry + typography
+   ========================================================================== */
+
+html {
+  /* The design system's `corner-shape: superellipse(1.5)` reads as a squarish
+     corner in Chromium; the shipped components already carry small radii
+     (2–12px on bubbles, panels, inputs), so plain round corners are what makes
+     them read as rounded boxes again. `!important` is needed because the plugin
+     applies the shape through `*, ::before, ::after`. */
+  --dsw-corner-shape: round !important;
+  /* Rounded but formal: Segoe UI Variable is Windows' humanist variable face —
+     softer terminals than the condensed Bahnschrift, still a system UI face.
+     `Display` leads for headlines, `Text` carries body copy. */
+  --dsw-font-family: "Segoe UI Variable Display", "Segoe UI Variable Text",
+    "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "PingFang SC",
+    "Hiragino Sans GB", system-ui, sans-serif !important;
+  --ds-font-family-code: "Cascadia Code", "Cascadia Mono", Consolas, "SF Mono",
+    "Liberation Mono", monospace !important;
+}
+
+/* The transition layer stays hard-edged: it is the instrument, not a panel. */
+html .hsx-boot,
+html .hsx-boot *,
+html .hsx-boot *::before,
+html .hsx-boot *::after {
+  corner-shape: square !important;
+}
+
+/* Painting the field here (not only on .hsx-boot) closes the first-paint gap
+   before the boot stylesheet is parsed, and again after the layer is removed. */
+html[data-hsx-boot],
+body:has(.hsx-boot) {
+  background-color: #0b0d0f;
+}
+
+html[data-hsx-skin] {
+  --dsh-font-sans: "Segoe UI Variable Display", "Segoe UI Variable Text",
+    "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "PingFang SC",
+    "Hiragino Sans GB", system-ui, sans-serif;
+  --dsh-font-mono: "Cascadia Code", "Cascadia Mono", Consolas, "SF Mono", monospace;
+  /* Tabular figures keep numeric readouts aligned. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   Light / base palette (also the fallback for a light theme preference)
+   ========================================================================== */
+
+body {
+  --dsw-alias-bg-base: #f1f2f3 !important;
+  --dsw-alias-bg-layer-1: #fafafa !important;
+  --dsw-alias-bg-layer-2: #ffffff !important;
+  --dsw-alias-bg-layer-3: #ffffff !important;
+  --dsw-alias-bg-overlay: #ffffff !important;
+  --dsw-alias-bg-mask-1: rgba(22, 25, 28, 0.28) !important;
+  --dsw-alias-bg-mask-2: rgba(22, 25, 28, 0.48) !important;
+  --dsw-alias-bg-mask-3: rgba(22, 25, 28, 0.64) !important;
+  --dsw-alias-bg-mask-drop: rgba(22, 25, 28, 0.30) !important;
+  --dsw-alias-bg-mask-photo: rgba(22, 25, 28, 0.52) !important;
+  --dsw-alias-bg-skeleton: #e6e8ea !important;
+  --dsw-alias-bg-module-platform: #eceef0 !important;
+  --dsw-alias-bg-multi-select: rgba(169, 122, 31, 0.12) !important;
+
+  --dsw-alias-border-inverted: #ffffff !important;
+  --dsw-alias-border-inverted2: #f1f2f3 !important;
+  --dsw-alias-border-l1: rgba(0, 0, 0, 0.06) !important;
+  --dsw-alias-border-l2: rgba(0, 0, 0, 0.10) !important;
+  --dsw-alias-border-l2-darkmode-thin: rgba(0, 0, 0, 0.10) !important;
+  --dsw-alias-border-l3: rgba(0, 0, 0, 0.16) !important;
+  --dsw-alias-border-l4: rgba(0, 0, 0, 0.24) !important;
+
+  --dsw-alias-label-primary: #14171a !important;
+  --dsw-alias-label-primary-bluish: #14171a !important;
+  --dsw-alias-label-primary-foreground: #ffffff !important;
+  --dsw-alias-label-primary-inverted: #ffffff !important;
+  --dsw-alias-label-primary-dimmed: #3d4348 !important;
+  --dsw-alias-label-secondary: #5b636b !important;
+  --dsw-alias-label-tertiary: #7c848c !important;
+  --dsw-alias-label-caption: #8a929a !important;
+  --dsw-alias-label-dimmed: #a6adb4 !important;
+  --dsw-alias-link: #8a6415 !important;
+
+  --dsw-alias-brand-primary: #a97a1f !important;
+  --dsw-alias-brand-primary-invert: #ffffff !important;
+  --dsw-alias-brand-text: #8a6415 !important;
+
+  --dsw-alias-interactive-bg-hover: rgba(0, 0, 0, 0.05) !important;
+  --dsw-alias-interactive-bg-active: rgba(0, 0, 0, 0.09) !important;
+  --dsw-alias-interactive-bg-hover-solid: #e7e9eb !important;
+  --dsw-alias-interactive-bg-hover-accent: rgba(169, 122, 31, 0.12) !important;
+  --dsw-alias-interactive-bg-hover-danger: rgba(192, 62, 50, 0.12) !important;
+
+  --dsw-alias-state-warn-primary: #b07f16 !important;
+  --dsw-alias-state-warn-secondary: #c2942c !important;
+  --dsw-alias-state-warn-tertiary: #e0c58a !important;
+  --dsw-alias-state-warn-label: #8a6415 !important;
+  --dsw-alias-state-success-primary: #2f8b58 !important;
+  --dsw-alias-state-success-secondary: #3f9f68 !important;
+  --dsw-alias-state-success-tertiary: #a9d8c1 !important;
+  --dsw-alias-state-error-primary: #c03e32 !important;
+  --dsw-alias-state-error-secondary: #d1544a !important;
+  --dsw-alias-state-business-primary: #40607e !important;
+  --dsw-alias-state-business-tertiary: #7f96ab !important;
+
+  --dsw-alias-toast-bg: #ffffff !important;
+  --dsw-alias-tooltip-bg: #14171a !important;
+
+  /* These three are easy to miss in a light palette and were caught by the
+     preview review: an unoverridden bubble-highlight, and the toast surface
+     kept its dark value. */
+  --dsw-specific-bubble-highlight: #f0f2f4 !important;
+  --dsw-alias-label-primary-bluish: #14171a !important;
+  --dsw-alias-label-primary-dimmed: #3d4348 !important;
+
+
+  --dsw-alias-markdown-code-block: #f1f2f3 !important;
+  --dsw-alias-markdown-code-block-banner: #e9ebed !important;
+  --dsw-alias-markdown-inline-code: rgba(169, 122, 31, 0.12) !important;
+  --dsw-alias-markdown-citation: #6b737c !important;
+  --dsw-alias-markdown-tag: rgba(169, 122, 31, 0.16) !important;
+  --dsw-alias-markdown-placeholder: #a6adb4 !important;
+  --dsw-alias-markdown-code-segment-selected: #e2e4e6 !important;
+  --dsw-alias-markdown-code-segment-unselected: #f1f2f3 !important;
+
+  --dsw-alias-scrollbar-bg-l1: transparent !important;
+  --dsw-alias-scrollbar-bg-l2: transparent !important;
+  --dsw-alias-scrollbar-hover-l1: rgba(0, 0, 0, 0.20) !important;
+  --dsw-alias-scrollbar-hover-l2: rgba(0, 0, 0, 0.26) !important;
+
+  --dsw-alias-button-primary-fill: #a97a1f !important;
+  --dsw-alias-button-primary-hover: #b98a2b !important;
+  --dsw-alias-button-primary-dimmed: rgba(169, 122, 31, 0.30) !important;
+  --dsw-alias-button-contrast-fill: #14171a !important;
+  --dsw-alias-button-elevated-fill: #ffffff !important;
+  --dsw-alias-button-floating-fill: #ffffff !important;
+  --dsw-alias-button-floating-hover: #f1f2f3 !important;
+  --dsw-alias-button-info-fill: #e9ebed !important;
+  --dsw-alias-button-info-hover: #dfe2e4 !important;
+  --dsw-alias-button-ghost-active-fill: rgba(169, 122, 31, 0.14) !important;
+  --dsw-alias-button-ghost-active-hover: rgba(169, 122, 31, 0.22) !important;
+  --dsw-alias-button-ghost-active-border: rgba(169, 122, 31, 0.45) !important;
+  --dsw-alias-button-tool-bar-fill: transparent !important;
+  --dsw-alias-button-tool-bar-fill-invisible: transparent !important;
+  --dsw-alias-button-tool-bar-hover: rgba(0, 0, 0, 0.06) !important;
+
+  --dsw-specific-bubble: #e7e9eb !important;
+  --dsw-specific-bubble-highlight: #dfe2e5 !important;
+  --dsw-specific-input-major: #ffffff !important;
+  --dsw-specific-login-input: #ffffff !important;
+  --dsw-specific-menu: #ffffff !important;
+  --dsw-specific-selector: #ffffff !important;
+  --dsw-specific-sidebar-fill: #e9ebed !important;
+  --dsw-specific-sidebar-nav-item-hover: rgba(0, 0, 0, 0.05) !important;
+  --dsw-specific-sidebar-nav-item-active: rgba(169, 122, 31, 0.16) !important;
+  --dsw-specific-sidebar-nav-item-active-accent: #a97a1f !important;
+  --dsw-specific-tip: #ffffff !important;
+
+  --dsw-linear-gradient-think: linear-gradient(90deg, rgba(169, 122, 31, 0), rgba(169, 122, 31, 0.55), rgba(169, 122, 31, 0)) !important;
+  --dsw-linear-think-select: linear-gradient(90deg, rgba(169, 122, 31, 0.18), rgba(169, 122, 31, 0.05)) !important;
+
+  --dsw-elevation-stroke-color: rgba(0, 0, 0, 0.08) !important;
+  --dsw-shadow-lv1: 0 1px 2px rgba(16, 18, 20, 0.06) !important;
+  --dsw-shadow-lv2: 0 6px 20px rgba(16, 18, 20, 0.10) !important;
+  --dsw-shadow-lv3: 0 16px 44px rgba(16, 18, 20, 0.16) !important;
+}
+
+/* ==========================================================================
+   Dark palette — the authoritative mode (skin default)
+   ========================================================================== */
+
+body[data-ds-dark-theme] {
+  --dsw-alias-bg-base: #0e1012 !important;
+  --dsw-alias-bg-layer-1: #16191c !important;
+  --dsw-alias-bg-layer-2: #1d2126 !important;
+  --dsw-alias-bg-layer-3: #272b30 !important;
+  --dsw-alias-bg-overlay: #0a0c0e !important;
+  --dsw-alias-bg-mask-1: rgba(8, 10, 12, 0.32) !important;
+  --dsw-alias-bg-mask-2: rgba(8, 10, 12, 0.56) !important;
+  --dsw-alias-bg-mask-3: rgba(8, 10, 12, 0.72) !important;
+  --dsw-alias-bg-mask-drop: rgba(4, 5, 7, 0.72) !important;
+  --dsw-alias-bg-mask-photo: rgba(8, 10, 12, 0.60) !important;
+  --dsw-alias-bg-skeleton: #1d2126 !important;
+  --dsw-alias-bg-module-platform: #1a1e22 !important;
+  --dsw-alias-bg-multi-select: rgba(216, 161, 60, 0.14) !important;
+
+  --dsw-alias-border-inverted: #0e1012 !important;
+  --dsw-alias-border-inverted2: #16191c !important;
+  --dsw-alias-border-l1: rgba(255, 255, 255, 0.06) !important;
+  --dsw-alias-border-l2: rgba(255, 255, 255, 0.10) !important;
+  --dsw-alias-border-l2-darkmode-thin: rgba(255, 255, 255, 0.08) !important;
+  --dsw-alias-border-l3: rgba(255, 255, 255, 0.16) !important;
+  --dsw-alias-border-l4: rgba(255, 255, 255, 0.24) !important;
+
+  --dsw-alias-label-primary: #e9ecef !important;
+  --dsw-alias-label-primary-bluish: #e3e8ee !important;
+  --dsw-alias-label-primary-foreground: #0e1012 !important;
+  --dsw-alias-label-primary-inverted: #0e1012 !important;
+  --dsw-alias-label-primary-dimmed: #b9c0c7 !important;
+  --dsw-alias-label-secondary: #9aa2ab !important;
+  --dsw-alias-label-tertiary: #737b84 !important;
+  --dsw-alias-label-caption: #6b737c !important;
+  --dsw-alias-label-dimmed: #4b5259 !important;
+  --dsw-alias-link: #d8a13c !important;
+
+  --dsw-alias-brand-primary: #d8a13c !important;
+  --dsw-alias-brand-primary-invert: #0e1012 !important;
+  --dsw-alias-brand-text: #e0b055 !important;
+
+  --dsw-alias-interactive-bg-hover: rgba(255, 255, 255, 0.06) !important;
+  --dsw-alias-interactive-bg-active: rgba(255, 255, 255, 0.10) !important;
+  --dsw-alias-interactive-bg-hover-solid: #22262b !important;
+  --dsw-alias-interactive-bg-hover-accent: rgba(216, 161, 60, 0.14) !important;
+  --dsw-alias-interactive-bg-hover-danger: rgba(216, 86, 74, 0.16) !important;
+
+  --dsw-alias-state-warn-primary: #cf9a3a !important;
+  --dsw-alias-state-warn-secondary: #dcb063 !important;
+  --dsw-alias-state-warn-tertiary: #eed39f !important;
+  --dsw-alias-state-warn-label: #dcb063 !important;
+  --dsw-alias-state-success-primary: #57a97a !important;
+  --dsw-alias-state-success-secondary: #7cc09a !important;
+  --dsw-alias-state-success-tertiary: #a9d8c1 !important;
+  --dsw-alias-state-error-primary: #d8564a !important;
+  --dsw-alias-state-error-secondary: #e07a70 !important;
+  --dsw-alias-state-business-primary: #8ea6bd !important;
+  --dsw-alias-state-business-tertiary: #b9c8d6 !important;
+
+  --dsw-alias-toast-bg: #1d2126 !important;
+  --dsw-alias-tooltip-bg: #22262b !important;
+
+  --dsw-alias-markdown-code-block: #101316 !important;
+  --dsw-alias-markdown-code-block-banner: #191d21 !important;
+  --dsw-alias-markdown-inline-code: rgba(216, 161, 60, 0.12) !important;
+  --dsw-alias-markdown-citation: #7f8892 !important;
+  --dsw-alias-markdown-tag: rgba(216, 161, 60, 0.16) !important;
+  --dsw-alias-markdown-placeholder: #5a626a !important;
+  --dsw-alias-markdown-code-segment-selected: #262b30 !important;
+  --dsw-alias-markdown-code-segment-unselected: #1a1e22 !important;
+
+  --dsw-alias-scrollbar-bg-l1: transparent !important;
+  --dsw-alias-scrollbar-bg-l2: transparent !important;
+  --dsw-alias-scrollbar-hover-l1: rgba(255, 255, 255, 0.18) !important;
+  --dsw-alias-scrollbar-hover-l2: rgba(255, 255, 255, 0.24) !important;
+
+  --dsw-alias-button-primary-fill: #d8a13c !important;
+  --dsw-alias-button-primary-hover: #e0b055 !important;
+  --dsw-alias-button-primary-dimmed: rgba(216, 161, 60, 0.34) !important;
+  --dsw-alias-button-contrast-fill: #e9ecef !important;
+  --dsw-alias-button-elevated-fill: #22262b !important;
+  --dsw-alias-button-floating-fill: #1d2126 !important;
+  --dsw-alias-button-floating-hover: #272b30 !important;
+  --dsw-alias-button-info-fill: #2b3138 !important;
+  --dsw-alias-button-info-hover: #343b43 !important;
+  --dsw-alias-button-ghost-active-fill: rgba(216, 161, 60, 0.16) !important;
+  --dsw-alias-button-ghost-active-hover: rgba(216, 161, 60, 0.24) !important;
+  --dsw-alias-button-ghost-active-border: rgba(216, 161, 60, 0.45) !important;
+  --dsw-alias-button-tool-bar-fill: transparent !important;
+  --dsw-alias-button-tool-bar-fill-invisible: transparent !important;
+  --dsw-alias-button-tool-bar-hover: rgba(255, 255, 255, 0.08) !important;
+
+  --dsw-specific-bubble: #1b1f23 !important;
+  --dsw-specific-bubble-highlight: #232830 !important;
+  --dsw-specific-input-major: #14171a !important;
+  --dsw-specific-login-input: #14171a !important;
+  --dsw-specific-menu: #1d2126 !important;
+  --dsw-specific-selector: #22262b !important;
+  --dsw-specific-sidebar-fill: #101316 !important;
+  --dsw-specific-sidebar-nav-item-hover: rgba(255, 255, 255, 0.06) !important;
+  --dsw-specific-sidebar-nav-item-active: rgba(216, 161, 60, 0.16) !important;
+  --dsw-specific-sidebar-nav-item-active-accent: #d8a13c !important;
+  --dsw-specific-tip: #22262b !important;
+
+  --dsw-linear-gradient-think: linear-gradient(90deg, rgba(216, 161, 60, 0), rgba(216, 161, 60, 0.55), rgba(216, 161, 60, 0)) !important;
+  --dsw-linear-think-select: linear-gradient(90deg, rgba(216, 161, 60, 0.20), rgba(216, 161, 60, 0.06)) !important;
+
+  --dsw-elevation-stroke-color: rgba(255, 255, 255, 0.08) !important;
+  --dsw-shadow-lv1: 0 1px 2px rgba(0, 0, 0, 0.50) !important;
+  --dsw-shadow-lv2: 0 6px 20px rgba(0, 0, 0, 0.55) !important;
+  --dsw-shadow-lv3: 0 16px 44px rgba(0, 0, 0, 0.62) !important;
+}
+
+/* ==========================================================================
+   Shell boot placeholder
+   --------------------------------------------------------------------------
+   The client half keeps `data-hsx-boot` on <html> until the skin's own
+   transition layer is gone, so the shell's placeholder never flashes behind it.
+   If the transition layer is absent (script disabled, overlay turned off) the
+   attribute is removed on activation and the placeholder behaves normally.
+   ========================================================================== */
+
+html[data-hsx-boot] [data-dsh-boot] {
+  display: none !important;
+}
