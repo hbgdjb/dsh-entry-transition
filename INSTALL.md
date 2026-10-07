@@ -5,7 +5,7 @@
 
 ## A. 离线安装（推荐，需要 Node.js）
 
-1. 下载并解压 `harness-skin-1.0.0.zip`；
+1. 下载并解压 `dsh-entry-transition-1.0.1.zip`；
 2. 在解压目录打开终端，运行：
 
    ```powershell
@@ -16,7 +16,7 @@
 
 脚本只做两件事，其余一概不碰：
 
-- 复制 `lib/` 与运行清单到 `%USERPROFILE%\.dsh\plugins\harness-skin`；
+- 复制 `lib/` 与运行清单到 `%USERPROFILE%\.dsh\plugins\dsh-entry-transition`；
 - 在 `%USERPROFILE%\.dsh\profiles\desktop\cordis.patch.yml` 末尾追加一段**带标记**的
   `- insert:` 条目；写入前自动备份为 `cordis.patch.yml.bak-hsx-install`（已有备份不覆盖）。
 
@@ -25,14 +25,14 @@
 
 ### 不方便跑脚本？手动三步
 
-1. 把 `lib` 文件夹和 `package.json` 复制到 `%USERPROFILE%\.dsh\plugins\harness-skin\`；
+1. 把 `lib` 文件夹和 `package.json` 复制到 `%USERPROFILE%\.dsh\plugins\dsh-entry-transition\`；
 2. 用记事本打开 `%USERPROFILE%\.dsh\profiles\desktop\cordis.patch.yml`，在**文件末尾**追加
    （路径换成你的用户名，斜杠方向保持 `/`，文件保存为 UTF-8）：
 
    ```yaml
    - insert:
-       - id: harness-skin
-         name: "file:///C:/Users/你的用户名/.dsh/plugins/harness-skin/lib/index.js"
+       - id: dsh-entry-transition
+         name: "file:///C:/Users/你的用户名/.dsh/plugins/dsh-entry-transition/lib/index.js"
          config:
            enabled: true
            overlay: true
@@ -49,11 +49,11 @@
 在你的 profile 目录（桌面应用是 `%USERPROFILE%\.dsh\profiles\desktop`）执行：
 
 ```powershell
-pnpm add "下载的目录\harness-skin-1.0.0.tgz"
+pnpm add "下载的目录\dsh-entry-transition-1.0.1.tgz"
 ```
 
 然后在该目录 `package.json` 的 `dsh.profile.bundles` 数组里加上
-`"@dsh-skin/harness-skin"`，重启应用。包内的 `cordis.patch.yml` 会作为 bundle 层
+`"dsh-entry-transition"`，重启应用。包内的 `cordis.patch.yml` 会作为 bundle 层
 （package.json 的 `dsh.bundle.patch` 声明）自动接入，无需改 profile patch。
 
 > 这条路径遵循生态惯例（dshmarket、dsh-session-shield 等插件都这么装），
@@ -63,9 +63,9 @@ pnpm add "下载的目录\harness-skin-1.0.0.tgz"
 
 | 安装方式 | 卸载 |
 |---|---|
-| A（脚本） | `node install.mjs --remove`，然后可删除 `%USERPROFILE%\.dsh\plugins\harness-skin` |
+| A（脚本） | `node install.mjs --remove`，然后可删除 `%USERPROFILE%\.dsh\plugins\dsh-entry-transition` |
 | A（手动） | 删掉 patch 里那段 `- insert:`（或把 `enabled` 改成 `false`），再删插件目录 |
-| B（依赖） | 从 `dsh.profile.bundles` 移除包名并 `pnpm remove @dsh-skin/harness-skin` |
+| B（依赖） | 从 `dsh.profile.bundles` 移除包名并 `pnpm remove dsh-entry-transition` |
 
 改 patch 时留下的还原备份：`cordis.patch.yml.bak-hsx-install`（A）、
 `cordis.patch.yml.bak-hsx`（本机原配置）。

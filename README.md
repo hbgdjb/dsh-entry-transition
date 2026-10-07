@@ -122,7 +122,7 @@ scripts/sync.mjs  把 lib/ 同步到运行时路径
 
 ## 安装
 
-运行时路径必须是纯 ASCII，所以 `lib/` 会被同步到 `C:\Users\29316\.dsh\plugins\harness-skin`：
+运行时路径必须是纯 ASCII，所以 `lib/` 会被同步到 `C:\Users\29316\.dsh\plugins\dsh-entry-transition`：
 
 ```powershell
 node scripts/sync.mjs
@@ -132,8 +132,8 @@ node scripts/sync.mjs
 
 ```yaml
 - insert:
-    - id: harness-skin
-      name: "file:///C:/Users/29316/.dsh/plugins/harness-skin/lib/index.js"
+    - id: dsh-entry-transition
+      name: "file:///C:/Users/29316/.dsh/plugins/dsh-entry-transition/lib/index.js"
       config:
         enabled: true
         overlay: true
@@ -161,8 +161,8 @@ node tools/package-plugin.mjs
 
 | 文件 | 给谁 | 怎么装 |
 |---|---|---|
-| `harness-skin-1.0.0.zip` | 任意用户 | 解压 → `node install.mjs` → 重启应用（离线安装，先备份 patch，幂等） |
-| `harness-skin-1.0.0.tgz` | npm/pnpm 生态 | profile 目录里 `pnpm add` + 把包名加进 `dsh.profile.bundles`（包内 `cordis.patch.yml` 作为 bundle 层自动接入） |
+| `dsh-entry-transition-1.0.1.zip` | 任意用户 | 解压 → `node install.mjs` → 重启应用（离线安装，先备份 patch，幂等） |
+| `dsh-entry-transition-1.0.1.tgz` | npm/pnpm 生态 | profile 目录里 `pnpm add` + 把包名加进 `dsh.profile.bundles`（包内 `cordis.patch.yml` 作为 bundle 层自动接入） |
 
 安装细节、不跑脚本的手动三步、卸载，见包内 `INSTALL.md`。
 `node verify-all.mjs` 的第 9 项会重新构建并验收这两个产物。

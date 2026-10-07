@@ -7,9 +7,9 @@
  *   node install.mjs --remove   删除本脚本写入的 patch 条目（文件保留）
  *
  * 只做两件事，其它内容一概不碰：
- *   1. 把 lib/ 与运行清单复制到 %USERPROFILE%\.dsh\plugins\harness-skin；
+ *   1. 把 lib/ 与运行清单复制到 %USERPROFILE%\.dsh\plugins\dsh-entry-transition；
  *   2. 在 %USERPROFILE%\.dsh\profiles\desktop\cordis.patch.yml 末尾追加
- *      （--remove 时删除）一段带标记 `# harness-skin (install.mjs)` 的 insert 条目。
+ *      （--remove 时删除）一段带标记 `# dsh-entry-transition (install.mjs)` 的 insert 条目。
  * 改 patch 前自动备份为 cordis.patch.yml.bak-hsx-install（仅在没有备份时写一次）。
  */
 
@@ -21,8 +21,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 const root = resolve(dirname(fileURLToPath(import.meta.url)))
 
 /** ASCII marker: everything this script writes into the patch carries it. */
-const MARK = '# harness-skin (install.mjs)'
-const ID = 'id: harness-skin'
+const MARK = '# dsh-entry-transition (install.mjs)'
+const ID = 'id: dsh-entry-transition'
 
 const argv = process.argv.slice(2)
 const dry = argv.includes('--dry-run')
@@ -45,7 +45,7 @@ if (argv.includes('--help') || argv.includes('-h')) {
 const home = process.env.USERPROFILE || process.env.HOME
 if (!home) fail('环境变量 USERPROFILE/HOME 不存在 —— 请在普通用户终端里运行')
 
-const pluginDir = join(home, '.dsh', 'plugins', 'harness-skin')
+const pluginDir = join(home, '.dsh', 'plugins', 'dsh-entry-transition')
 const patchPath = join(home, '.dsh', 'profiles', 'desktop', 'cordis.patch.yml')
 const backupPath = patchPath + '.bak-hsx-install'
 
@@ -56,7 +56,7 @@ const entryUrl = pathToFileURL(join(pluginDir, 'lib', 'index.js')).href
 const block =
   MARK + ' — 入场过渡：安装标记（删除本段即卸载）\n' +
   '- insert:\n' +
-  '    - id: harness-skin\n' +
+  '    - id: dsh-entry-transition\n' +
   '      name: "' + entryUrl + '"\n' +
   '      config:\n' +
   '        enabled: true\n' +
@@ -125,10 +125,10 @@ function patchEntry(content) {
   if (remove) {
     if (!hasMark) {
       if (hasId) {
-        log('patch 里有 harness-skin 条目，但不是本脚本写入的 —— 请手动编辑：')
+        log('patch 里有 dsh-entry-transition 条目，但不是本脚本写入的 —— 请手动编辑：')
         log('  ' + patchPath)
       } else {
-        log('未安装：patch 里没有 harness-skin 条目。')
+        log('未安装：patch 里没有 dsh-entry-transition 条目。')
       }
       return
     }
@@ -165,7 +165,7 @@ function patchEntry(content) {
     return
   }
   if (hasId) {
-    log('patch 里已有 harness-skin 条目（手工配置），不动 patch —— 只刷新文件')
+    log('patch 里已有 dsh-entry-transition 条目（手工配置），不动 patch —— 只刷新文件')
     return
   }
   const base = content.replace(/\s*$/, '') + '\n'

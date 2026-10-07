@@ -1,6 +1,6 @@
 {
   "name": "dsh-entry-transition",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "One-shot entrance animation for the DSH workspace: logo is written onto the canvas, an inverted color bar sweeps across on exit; mirrors light/dark themes automatically.",
   "type": "module",
   "main": "./lib/index.js",
