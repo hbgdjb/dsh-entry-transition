@@ -1,5 +1,7 @@
 # 工作台皮肤（工业风过渡画面 + 深色令牌皮肤）
 
+<img src="https://kingofsoysauce.github.io/dsh-skin-market/skin-screenshots/hbgdjb__dsh-entry-transition/96f0a90d794fbbf443d2b7d5036263f6399b1d01/home.gif" width="720" alt="dsh-entry-transition">
+
 给 DSH Web 界面加一层"进入工作台"的过渡画面，并把整套配色/字体换成简约的深色工业风。
 参考了用户提供的官网进入过渡画面的**手感**，但所有文案与图形都是中性的工程词汇，
 **不含任何游戏相关字眼**（见 `DESIGN-SPEC.md` §3.3 白名单）。
